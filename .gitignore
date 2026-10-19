@@ -1,0 +1,28 @@
+# Visual Studio / Qt 生成的编译产物文件夹
+Debug/
+Release/
+x64/
+x86/
+.vs/
+build/
+# 预编译头文件
+*.pch
+*.pdb
+*.ilk
+*.exp
+*.lib
+# 编译生成的目标文件和可执行文件 
+*.obj
+*.exe
+*.o
+*.dll
+# Qt 自动生成的 moc 和 ui 文件
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+# 其他系统或 IDE 的垃圾文件
+*.user
+*.suo
+.DS_Store
+Thumbs.db
