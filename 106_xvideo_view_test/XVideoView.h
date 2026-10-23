@@ -44,11 +44,20 @@ public:
 	//// @return 是否渲染成功
 	/////////////////////////////////////////
 	virtual bool Draw(const unsigned char* data, int linesize = 0) = 0;
+	// 窗口显示缩放
+	void Scale(int w, int h) {
+		scale_w_ = w;
+		scale_h_ = h;
+	}
 protected: // 在派生类中访问
-	int width_ = 0; // 窗口宽度
-	int height_ = 0; // 窗口高度
+	int width_ = 0; // 材质宽度
+	int height_ = 0; // 材质高度
 	PixFormat fmt_ = RGBA; // 像素格式
 	std::mutex mtx_; // 线程安全互斥锁
+	
+	// 实际显示大小(窗口大小)
+	int scale_w_ = 0;
+	int scale_h_ = 0; 
 };
 
 #endif

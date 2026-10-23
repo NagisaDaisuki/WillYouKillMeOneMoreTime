@@ -15,6 +15,9 @@ static bool InitVideo()
 		std::cout << SDL_GetError() << std::endl;
 		return false;
 	}
+	// 设定缩放算法解决锯齿问题
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
+	// 1 是线性插值算法，0 是临近值缩放（默认会抗锯齿）
 	return true;
 }
 
@@ -84,7 +87,7 @@ bool XSDL::Init(int w, int h,
 	case XVideoView::RGBA:
 		sdl_fmt = SDL_PIXELFORMAT_RGBA8888; break;
 	case XVideoView::ARGB:
-		sdl_fmt = SDL_PIXELFORMAT_ARGB8888; break;
+		sdl_fmt = SDL_PIXELFORMAT_ARGB32; break;
 	case XVideoView::YUV420P:
 		sdl_fmt = SDL_PIXELFORMAT_IYUV; break;
 	}
@@ -140,14 +143,16 @@ bool XSDL::Draw(const unsigned char* data, int linesize)
 
 
 	// 获取渲染器（Label）的真实大小
-	int out_w, out_h;
-	SDL_GetRendererOutputSize(render_, &out_w, &out_h);
+	// int out_w, out_h;
+	// SDL_GetRendererOutputSize(render_, &scale_w_, &scale_h_);
 	// 材质复制到渲染器
+	if (scale_w_ <= 0) scale_w_ = width_;
+	if (scale_h_ <= 0) scale_h_ = height_;
 	SDL_Rect rect;
 	rect.x = 0;
 	rect.y = 0;
-	rect.w = out_w;
-	rect.h = out_h;
+	rect.w = scale_w_; // 渲染的宽高，可缩放 
+	rect.h = scale_h_;
 
 	re = SDL_RenderCopy(render_,texture_, NULL, &rect);
 	if (re != 0) {

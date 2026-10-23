@@ -17,10 +17,15 @@ static std::ifstream yuv_file;
 static XVideoView* view = nullptr;
 
 void SdlQtRgb::resizeEvent(QResizeEvent* event) {
-    QWidget::resizeEvent(event);
-    if (ui.label) {
-        ui.label->setGeometry(0,0,width(), height());
-    }
+    ui.label->resize(size());
+    ui.label->move(0,0);
+    // 传实际缩放过后的物理像素
+    qreal dpr = ui.label->devicePixelRatioF();
+    view->Scale(width() * dpr, height() * dpr);
+    // QWidget::resizeEvent(event);
+    // if (ui.label) {
+    //     ui.label->setGeometry(0,0,width(), height());
+    // }
 }
 
 void SdlQtRgb::timerEvent(QTimerEvent* ev)
@@ -33,9 +38,9 @@ void SdlQtRgb::timerEvent(QTimerEvent* ev)
     // y * 1 + u * 0.25 + v * 0.25 = y * 1.5
     int frame_size = sdl_width * sdl_height * 3 / 2;
     // 
-        view->Draw(yuv,sdl_width);
     // 读取一帧数据
     yuv_file.read((char*)yuv, frame_size);
+    view->Draw(yuv,sdl_width);
     //if (ev->timerId() == 2)
     // {
         //SDL_UpdateTexture(SDL_GetRenderTarget(sdl_render), NULL, rgb, sdl_width * 4);
@@ -77,19 +82,19 @@ SdlQtRgb::SdlQtRgb(QWidget *parent)
     // sdl_width = ui.label->width() * dpr;
     // sdl_height = ui.label->height() * dpr;
     // 让 label 铺满整个 widget:
-    ui.label->setGeometry(0,0, width(), height());
+    // ui.label->setGeometry(0,0, width(), height());
 
     // 视频的实际分辨率
     sdl_width = 1920;
     sdl_height = 1080;
     // 初始化 SDL，重点：传 label 的真实物理尺寸给SDL
-    qreal dpr = ui.label->devicePixelRatioF();
-    int phys_w = ui.label->width() * dpr;
-    int phys_h = ui.label->height() * dpr;
-    //ui.label->resize(sdl_width, sdl_height);
+    // qreal dpr = ui.label->devicePixelRatioF();
+    // int phys_w = ui.label->width() * dpr;
+    // int phys_h = ui.label->height() * dpr;
+    ui.label->resize(sdl_width, sdl_height);
 
     // 构造一个 view 对象
-    view = XVideoView::Create(XVideoView::SDL);
+    view = XVideoView::Create();
     // 传入物理尺寸，保证 SDL 的纹理能覆盖整个 Label 区域
     view->Init(sdl_width,sdl_height, XVideoView::YUV420P, (void*)ui.label->winId());
     
