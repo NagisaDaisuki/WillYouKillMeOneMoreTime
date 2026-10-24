@@ -12,6 +12,7 @@ public:
     ~SdlQtRgb();
     void timerEvent(QTimerEvent* ev) override;
     void resizeEvent(QResizeEvent* event) override;
+    void ReverseRow(unsigned char* row, size_t n);
 private:
     Ui::SdlQtRgbClass ui;
 };

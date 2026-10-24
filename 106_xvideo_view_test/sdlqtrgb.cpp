@@ -11,17 +11,27 @@
 // static SDL_Texture* sdl_texture = NULL;
 static int sdl_width = 0;
 static int sdl_height = 0;
-static unsigned char*  yuv = NULL;
+static unsigned char* yuv = NULL;
 // static int pix_size = 2;
 static std::ifstream yuv_file;
 static XVideoView* view = nullptr;
 
-void SdlQtRgb::resizeEvent(QResizeEvent* event) {
+void SdlQtRgb::ReverseRow(unsigned char* row, size_t n)
+{
+    for (size_t i = 0,j = n - 1; i < n / 2; ++i, --j) {
+        unsigned char tmp = row[i];
+        row[i] = row[j];
+        row[j] = tmp;
+    }
+}
+
+void SdlQtRgb::resizeEvent(QResizeEvent* event)
+{
     ui.label->resize(size());
     ui.label->move(0,0);
     // 传实际缩放过后的物理像素
-    qreal dpr = ui.label->devicePixelRatioF();
-    view->Scale(width() * dpr, height() * dpr);
+    // qreal dpr = ui.label->devicePixelRatioF();
+    // view->Scale(width() * dpr, height() * dpr);
     // QWidget::resizeEvent(event);
     // if (ui.label) {
     //     ui.label->setGeometry(0,0,width(), height());
@@ -37,9 +47,41 @@ void SdlQtRgb::timerEvent(QTimerEvent* ev)
     // yuv 420格式 pix占内存大小 为像素 总大小 * 1.5
     // y * 1 + u * 0.25 + v * 0.25 = y * 1.5
     int frame_size = sdl_width * sdl_height * 3 / 2;
-    // 
+    if (view->IsExit())
+    {
+        view->Close();
+        exit(0);
+    }
     // 读取一帧数据
     yuv_file.read((char*)yuv, frame_size);
+    // yuv镜像操作
+    // 考虑内存对齐
+    // yyyyyyyy uu vv
+    // y 平面镜像(planar)
+    unsigned char* cur_yuv = nullptr;
+    size_t y_size = (size_t)sdl_width * sdl_height;
+    size_t uv_size = y_size / 4;
+    uint8_t* Y = yuv;
+    uint8_t* U = yuv + y_size;
+    uint8_t* V = yuv + y_size + uv_size;
+    for (int i = 0; i < sdl_height; ++i) {
+        // cur_yuv = yuv + i * sdl_width;
+        cur_yuv = Y + i * sdl_width;
+        ReverseRow(cur_yuv, sdl_width);
+    }
+    // u 平面镜像 
+    for (int i = 0; i < sdl_height / 2; ++i) {
+        // cur_yuv = yuv + sdl_width * sdl_height + i * sdl_width / 2;
+        cur_yuv = U + i * sdl_width / 2;
+        ReverseRow(cur_yuv, sdl_width / 2);
+    }
+    // v 平面镜像
+    for (int i = 0; i < sdl_height / 2; ++i) {
+        // cur_yuv = yuv + sdl_width * sdl_height * 5 / 4 + i * sdl_width / 2;
+        cur_yuv = V + i * sdl_width / 2;
+        ReverseRow(cur_yuv, sdl_width / 2);
+    }
+
     view->Draw(yuv,sdl_width);
     //if (ev->timerId() == 2)
     // {
@@ -92,11 +134,19 @@ SdlQtRgb::SdlQtRgb(QWidget *parent)
     // int phys_w = ui.label->width() * dpr;
     // int phys_h = ui.label->height() * dpr;
     ui.label->resize(sdl_width, sdl_height);
+    ui.label->move(0,0);
 
     // 构造一个 view 对象
     view = XVideoView::Create();
+
+    // 独立窗口
+    view->Init(sdl_width,sdl_height, XVideoView::YUV420P);
+    // view->Close();
     // 传入物理尺寸，保证 SDL 的纹理能覆盖整个 Label 区域
-    view->Init(sdl_width,sdl_height, XVideoView::YUV420P, (void*)ui.label->winId());
+    //view->Init(sdl_width,sdl_height, XVideoView::YUV420P, (void*)ui.label->winId());
+    // 支持多次调用
+    //view->Init(sdl_width,sdl_height, XVideoView::YUV420P, (void*)ui.label->winId());
+
     
 
     // SDL_Init(SDL_INIT_VIDEO);
@@ -135,6 +185,7 @@ SdlQtRgb::~SdlQtRgb()
         delete[] yuv;
         yuv = nullptr;
     }
+    // view->Close();
     // if (sdl_texture) SDL_DestroyTexture(sdl_texture);
     // if (sdl_render) SDL_DestroyRenderer(sdl_render);
 	// if (sdl_win) SDL_DestroyWindow(sdl_win);

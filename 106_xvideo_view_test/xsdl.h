@@ -8,8 +8,12 @@ class XSDL :
     public XVideoView
 {
 public:
+
+	void Close() override;
+
+	bool IsExit() override;
     /////////////////////////////////////////
-	//// 初始化渲染窗口 线程安全
+	//// 初始化渲染窗口 线程安全 可多次调用
 	//// @para w 窗口宽度
 	//// @para h 窗口高度
 	//// @para fmt 像素格式
@@ -27,6 +31,7 @@ public:
 	//// @return 是否渲染成功
 	/////////////////////////////////////////
 	bool Draw(const unsigned char* data, int linesize = 0) override;
+
 private:
 	SDL_Window* win_ = nullptr;
 	SDL_Renderer* render_ = nullptr;

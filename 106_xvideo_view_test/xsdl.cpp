@@ -3,6 +3,38 @@
 #include <SDL.h>
 #include <iostream>
 #pragma comment(lib, "SDL2.lib")
+
+void XSDL::Close() 
+{
+	// 确保线程安全
+	std::unique_lock<std::mutex> sdl_lock(mtx_);
+	if (texture_)
+	{
+		SDL_DestroyTexture(texture_);
+		texture_ = nullptr;
+	}
+	if (render_)
+	{
+		SDL_DestroyRenderer(render_);
+		render_ = nullptr;
+	}
+	if (win_)
+	{
+		SDL_DestroyWindow(win_);
+		win_ = nullptr;
+	}
+}
+
+bool XSDL::IsExit()
+{
+	SDL_Event ev;
+	SDL_WaitEventTimeout(&ev, 1);
+	if (ev.type == SDL_QUIT)
+		return true;
+	return false;
+}
+
+
 static bool InitVideo()
 {
 	static bool is_first = true;
@@ -38,6 +70,10 @@ bool XSDL::Init(int w, int h,
 	width_ = w;
 	height_ = h;
 	fmt_ = fmt;
+	if (texture_)
+		SDL_DestroyTexture(texture_);
+	if (render_)
+		SDL_DestroyRenderer(render_);
 	
 
 	//////////////////////////////////////////
@@ -91,7 +127,6 @@ bool XSDL::Init(int w, int h,
 	case XVideoView::YUV420P:
 		sdl_fmt = SDL_PIXELFORMAT_IYUV; break;
 	}
-
 	texture_ = SDL_CreateTexture(render_,
 		sdl_fmt, // 像素格式
 		SDL_TEXTUREACCESS_STREAMING, // 频繁修改的渲染（带锁）
@@ -146,15 +181,19 @@ bool XSDL::Draw(const unsigned char* data, int linesize)
 	// int out_w, out_h;
 	// SDL_GetRendererOutputSize(render_, &scale_w_, &scale_h_);
 	// 材质复制到渲染器
-	if (scale_w_ <= 0) scale_w_ = width_;
-	if (scale_h_ <= 0) scale_h_ = height_;
+	// if (scale_w_ <= 0) scale_w_ = width_;
+	// if (scale_h_ <= 0) scale_h_ = height_;
 	SDL_Rect rect;
-	rect.x = 0;
-	rect.y = 0;
-	rect.w = scale_w_; // 渲染的宽高，可缩放 
-	rect.h = scale_h_;
-
-	re = SDL_RenderCopy(render_,texture_, NULL, &rect);
+	SDL_Rect* prect = nullptr;
+	if (scale_w_ > 0) // 用户手动设置缩放
+	{
+		rect.x = 0;
+		rect.y = 0;
+		rect.w = scale_w_; // 渲染的宽高，可缩放 
+		rect.h = scale_h_;
+		prect = &rect; // 设置了缩放后传入参数
+	}
+	re = SDL_RenderCopy(render_,texture_, NULL, prect);
 	if (re != 0) {
 		std::cout << SDL_GetError() << std::endl;
 		return false;

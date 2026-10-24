@@ -44,6 +44,14 @@ public:
 	//// @return 是否渲染成功
 	/////////////////////////////////////////
 	virtual bool Draw(const unsigned char* data, int linesize = 0) = 0;
+
+
+	// 清理所有申请的资源，包括关闭窗口
+	virtual void Close() = 0;
+
+	// 处理窗口退出事件 
+	virtual bool IsExit() = 0;
+
 	// 窗口显示缩放
 	void Scale(int w, int h) {
 		scale_w_ = w;
