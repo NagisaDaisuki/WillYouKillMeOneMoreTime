@@ -173,7 +173,7 @@ SdlQtRgb::SdlQtRgb(QWidget *parent)
     // 绑定渲染函数信号槽
     connect(this,SIGNAL(ViewS()), this, SLOT(View()));
     
-    // 显式 fps 控件 (绑定在ui.label 的子窗口)
+    // 显式 fps 控件 
     view_fps = new QLabel(this);
     // 1. 强制设为原生窗口，才能盖住 SDL 窗口
     view_fps->setAttribute(Qt::WA_NativeWindow);
