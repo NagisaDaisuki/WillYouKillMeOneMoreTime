@@ -1,0 +1,343 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SdlQtRgbClass</class>
+ <widget class="QWidget" name="SdlQtRgbClass">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>843</width>
+    <height>644</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>SdlQtRgb</string>
+  </property>
+  <widget class="QLabel" name="video1">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>10</y>
+     <width>400</width>
+     <height>300</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>32</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">background-color: rgb(210, 217, 255);</string>
+   </property>
+   <property name="text">
+    <string>Video</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="video2">
+   <property name="geometry">
+    <rect>
+     <x>430</x>
+     <y>10</y>
+     <width>400</width>
+     <height>300</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>32</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">background-color: rgb(220, 255, 210);</string>
+   </property>
+   <property name="text">
+    <string>Video</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="open1">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>360</y>
+     <width>81</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Open</string>
+   </property>
+  </widget>
+  <widget class="QComboBox" name="pix1">
+   <property name="geometry">
+    <rect>
+     <x>50</x>
+     <y>360</y>
+     <width>81</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <item>
+    <property name="text">
+     <string>YUV420P</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>RGBA</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>ARGB</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>BGRA</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>RGB24</string>
+    </property>
+   </item>
+  </widget>
+  <widget class="QSpinBox" name="height1">
+   <property name="geometry">
+    <rect>
+     <x>50</x>
+     <y>460</y>
+     <width>101</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="minimum">
+    <number>1</number>
+   </property>
+   <property name="maximum">
+    <number>9999</number>
+   </property>
+   <property name="value">
+    <number>1080</number>
+   </property>
+  </widget>
+  <widget class="QSpinBox" name="width1">
+   <property name="geometry">
+    <rect>
+     <x>50</x>
+     <y>420</y>
+     <width>101</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="minimum">
+    <number>1</number>
+   </property>
+   <property name="maximum">
+    <number>9999</number>
+   </property>
+   <property name="value">
+    <number>1920</number>
+   </property>
+  </widget>
+  <widget class="QSpinBox" name="set_fps1">
+   <property name="geometry">
+    <rect>
+     <x>50</x>
+     <y>510</y>
+     <width>101</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="minimum">
+    <number>1</number>
+   </property>
+   <property name="maximum">
+    <number>360</number>
+   </property>
+   <property name="value">
+    <number>25</number>
+   </property>
+  </widget>
+  <widget class="QSpinBox" name="height2">
+   <property name="geometry">
+    <rect>
+     <x>480</x>
+     <y>460</y>
+     <width>101</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="minimum">
+    <number>1</number>
+   </property>
+   <property name="maximum">
+    <number>9999</number>
+   </property>
+   <property name="value">
+    <number>1080</number>
+   </property>
+  </widget>
+  <widget class="QSpinBox" name="width2">
+   <property name="geometry">
+    <rect>
+     <x>480</x>
+     <y>420</y>
+     <width>101</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="minimum">
+    <number>1</number>
+   </property>
+   <property name="maximum">
+    <number>9999</number>
+   </property>
+   <property name="value">
+    <number>1920</number>
+   </property>
+  </widget>
+  <widget class="QSpinBox" name="set_fps2">
+   <property name="geometry">
+    <rect>
+     <x>480</x>
+     <y>510</y>
+     <width>101</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <property name="minimum">
+    <number>1</number>
+   </property>
+   <property name="maximum">
+    <number>360</number>
+   </property>
+   <property name="value">
+    <number>25</number>
+   </property>
+  </widget>
+  <widget class="QComboBox" name="pix2">
+   <property name="geometry">
+    <rect>
+     <x>480</x>
+     <y>360</y>
+     <width>81</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <item>
+    <property name="text">
+     <string>YUV420P</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>RGBA</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>ARGB</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>BGRA</string>
+    </property>
+   </item>
+   <item>
+    <property name="text">
+     <string>RGB24</string>
+    </property>
+   </item>
+  </widget>
+  <widget class="QPushButton" name="open2">
+   <property name="geometry">
+    <rect>
+     <x>630</x>
+     <y>360</y>
+     <width>81</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Open</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="fps1">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>30</y>
+     <width>54</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color: rgb(255, 0, 4);</string>
+   </property>
+   <property name="text">
+    <string>FPS:</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="fps2">
+   <property name="geometry">
+    <rect>
+     <x>450</x>
+     <y>20</y>
+     <width>54</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color: rgb(255, 0, 4);</string>
+   </property>
+   <property name="text">
+    <string>FPS:</string>
+   </property>
+  </widget>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources>
+  <include location="sdlqtrgb.qrc"/>
+ </resources>
+ <connections>
+  <connection>
+   <sender>open1</sender>
+   <signal>clicked()</signal>
+   <receiver>SdlQtRgbClass</receiver>
+   <slot>Open1()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>245</x>
+     <y>367</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>248</x>
+     <y>571</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>open2</sender>
+   <signal>clicked()</signal>
+   <receiver>SdlQtRgbClass</receiver>
+   <slot>Open2()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>669</x>
+     <y>371</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>756</x>
+     <y>584</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <slots>
+  <slot>Open1()</slot>
+  <slot>Open2()</slot>
+ </slots>
+</ui>
