@@ -44,7 +44,7 @@ void SdlQtRgb::Open(int i)
 
     int w = 0;
     int h = 0;
-    QString pix = 0; // YUV420P RGBA ARGB BGRA
+    QString pix = ""; // YUV420P RGBA ARGB BGRA
     XVideoView::PixFormat pixfmt = XVideoView::YUV420P;
 
     if (i == 0)
