@@ -12,9 +12,18 @@ extern "C" {
 #pragma comment(lib,"avcodec.lib")
 #pragma comment(lib,"avutil.lib")
 
+// ==========================================================
+// 🌟 测试开关：取消注释你想测试的模式（一次只能开一个）
+// ==========================================================
+// #define TEST_ABR        // 平均码率 (避免使用，画质最差)
+// #define TEST_CQP        // 恒定 QP (画质好，体积不可控)
+// #define TEST_CRF        // 恒定速率因子 (点播首选，纯 VBR)
+#define TEST_CBR        // 恒定比特率 (直播首选，带填充)
+// #define TEST_CRF_VBV    // CRF + 约束 (高质量在线点播)
+
 int main(int argc, char* argv[]) {
 	int re;
-	std::string filename= "400_300_25_preset";
+	std::string filename= "400_300_25_preset_";
 	AVCodecID codec_id = AV_CODEC_ID_H264;
 	if (argc > 1) 
 	{
@@ -25,17 +34,24 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
+#if defined(TEST_ABR)
+	filename += "abr";
+#elif defined(TEST_CQP)
+	filename += "cqp";
+#elif defined(TEST_CRF)
+	filename += "crf";
+#elif defined(TEST_CBR)
+	filename += "cbr";
+#elif defined(TEST_CRF_VBV)
+	filename += "crf_vbv";
+#endif
+
 	if (codec_id == AV_CODEC_ID_H264) 
-	{
 		filename += ".h264";
-	}
 	else if (codec_id == AV_CODEC_ID_HEVC)
-	{
 		filename += ".h265";
-	}
 	std::ofstream ofs;
 	ofs.open(filename, std::ios::binary);
-
 
 	// 1. 找到编码器 AV_CODEC_ID_HEVC(H265)
 	auto codec = avcodec_find_encoder(codec_id);
@@ -76,6 +92,44 @@ int main(int argc, char* argv[]) {
 	{
 		std::cout << "tune failed." << std::endl;
 	}
+
+	int target_bitrate = 400000;	// 测试用目标码率 400k
+
+	// ==========================================================
+	// 🌟 4. 核心：根据宏定义配置码率控制算法
+	// ==========================================================
+#if defined(TEST_ABR)
+	// 模式 1：ABR 平均比特率 (硬凑目标码率，画质波动大)
+	c->bit_rate = target_bitrate;
+	c->rc_max_rate = target_bitrate;
+	c->rc_buffer_size = target_bitrate * 2;
+	std::cout << "当前模式: ABR (平均码率)" << std::endl;
+#elif defined(TEST_CQP)
+	// 模式 2：CQP 恒定 QP (每一帧的压缩力度恒定，不管体积)
+	c->flags |= AV_CODEC_FLAG_QSCALE;
+	c->global_quality = FF_QP2LAMBDA * 23;
+	// av_opt_set_int(c->priv_data, "qp", 23, 0);
+	std::cout << "当前模式: CQP (恒定 QP 23)" << std::endl;
+#elif defined(TEST_CRF)
+	// 模式 3：CRF 恒定质量 (最常用，根据画质决定码率)
+	av_opt_set(c->priv_data, "crf", "23", 0);
+	std::cout << "当前模式: CRF (恒定质量 CRF 23)" << std::endl;
+#elif defined(TEST_CBR)
+	// 模式 4：CBR 恒定比特率 (加填充，适合推流。注意：封装成 MP4 会丢弃填充数据)
+	av_opt_set(c->priv_data, "nal-hrd", "cbr", 0);
+	c->bit_rate = target_bitrate;
+	c->rc_min_rate = target_bitrate;
+	c->rc_max_rate = target_bitrate;
+	c->rc_buffer_size = target_bitrate * 2;
+	std::cout << "当前模式: CBR (恒定码率 400k)" << std::endl;
+#elif defined(TEST_CRF_VBV)
+	// 模式 5：CRF + VBV 约束 (B站/YouTube 首选，保画质且防卡顿)
+	av_opt_set(c->priv_data, "crf", "23", 0);
+	c->rc_max_rate = target_bitrate;	// 限制瞬间最大码率
+	c->rc_buffer_size = target_bitrate;	// 缓冲区
+	std::cout << "当前模式: CRF + VBV 约束" << std::endl;
+	
+#endif
 
 	// 打开编码器上下文
 	re = avcodec_open2(c, codec, NULL);
