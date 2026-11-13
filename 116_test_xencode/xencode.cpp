@@ -46,7 +46,7 @@ AVCodecContext* XEncode::Create(int codec_id) {
 
 
 ///////////////////////////////////////////////
-/// 设置对象的编码器上下文 上下文传递到对象中，空间由 XEncode维护
+/// 设置对象的编码器上下文 上下文传递到对象中，空间由 XEncode维护 线程安全
 /// 加锁，线程安全 （在调用 set_c 时可能有的程序在使用 c_）
 ///	@para c 编码器上下文 如果 c_ 不为 nullptr，则先清理资源
 ///////////////////////////////////////////////
@@ -74,6 +74,8 @@ bool XEncode::SetOpt(const char* key, const char* value)
 	{
 		std::cerr << "av_opt_set failed!";
 		PrintErr(re);
+		return false;
+
 	}
 
 	return true;
