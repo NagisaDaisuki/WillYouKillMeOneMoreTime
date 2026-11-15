@@ -24,7 +24,6 @@ int main(int argc, char* argv[])
 	unsigned char inbuf[4096] = {0};
 	AVCodecID codec_id = AV_CODEC_ID_H264;
 
-
 	// 找解码器
 	auto codec = avcodec_find_decoder(codec_id);
 	if (!codec) 
@@ -33,11 +32,9 @@ int main(int argc, char* argv[])
 		return -1;
 	} 
 	
-	
-	
 	// 创建解码器上下文
-	auto codec_ctx = avcodec_alloc_context3(codec);
-	if (!codec_ctx)
+	auto sw_ctx = avcodec_alloc_context3(codec);
+	if (!sw_ctx)
 	{
 		std::cerr << "avcodec_alloc_context3 failed!" << std::endl;
 		return -1;
@@ -61,13 +58,13 @@ int main(int argc, char* argv[])
 							NULL,
 							NULL,
 							0);
-	codec_ctx->hw_device_ctx = av_buffer_ref(hw_ctx);
+	sw_ctx->hw_device_ctx = av_buffer_ref(hw_ctx);
 
 	// 添加多线程
-	codec_ctx->thread_count = 16;
+	sw_ctx->thread_count = 16;
 
 	// 打开解码器
-	re = avcodec_open2(codec_ctx, NULL, NULL);
+	re = avcodec_open2(sw_ctx, NULL, NULL);
 	if (re != 0)
 	{
 		std::cerr << "avcodec_open2 failed!" << std::endl;
@@ -110,7 +107,7 @@ int main(int argc, char* argv[])
 			// 通过 0001 截断输出到 AVPacket, 返回帧大小
 			int ret = av_parser_parse2(
 				parser,
-				codec_ctx,
+				sw_ctx,
 				&pkt->data,					// 输出数据
 				&pkt->size,					// 输出数据大小
 				data,						// 输入数据
@@ -128,21 +125,21 @@ int main(int argc, char* argv[])
 			{
 				// std::cout << pkt->size << " " << std::flush;
 				// 发送 Packet到解码线
-				ret = avcodec_send_packet(codec_ctx, pkt);
+				ret = avcodec_send_packet(sw_ctx, pkt);
 				if (ret < 0)
 					break;
 				// 获取多帧解码数据
 				while (ret >= 0) 
 				{
 					// 每次会调用 av_frame_unref()
-					ret = avcodec_receive_frame(codec_ctx, frame);
+					ret = avcodec_receive_frame(sw_ctx, frame);
 					if (ret < 0)
 						break;
-
+					// 
 					auto pframe = frame; // 同时支持硬解码和软解码
 					
 					// 区分硬解码和软解码
-					if (codec_ctx->hw_device_ctx)
+					if (sw_ctx->hw_device_ctx)
 					{
 						// 硬解码转换 GPU --> CPU
 						// 显存 --> 内存
@@ -151,11 +148,15 @@ int main(int argc, char* argv[])
 					}
 
 					std::cout << frame->format << " " << std::flush;
+					
 					///////////////////////////////////////////
-					/// 第一帧初始化窗口
+					/// 第一帧初始化窗口，只在最初获取
 					///////////////////////////////////////////
 					if (!is_init_win)
 					{
+						// pframe->format 获取实际格式
+						// （AV_PIX_FMT_NV12 或 AV_PIX_FMT_YUV420P）
+						// 动态初始化，动态传给 view->Init 初始化渲染器。
 						view->Init(pframe->width, pframe->height,(XVideoView::PixFormat)pframe->format);
 						is_init_win = true;
 					}
@@ -174,9 +175,9 @@ int main(int argc, char* argv[])
 	}
 
 	// 取出缓存当中的数据
-	int ret = avcodec_send_packet(codec_ctx, NULL);
+	int ret = avcodec_send_packet(sw_ctx, NULL);
 	while (ret >= 0) {
-		ret = avcodec_receive_frame(codec_ctx, frame);
+		ret = avcodec_receive_frame(sw_ctx, frame);
 		if (ret < 0) break;
 		std::cout << frame->format << "-" << std::flush;
 	}
@@ -188,7 +189,7 @@ int main(int argc, char* argv[])
 	av_frame_free(&frame);
 
 	// 释放上下文
-	avcodec_free_context(&codec_ctx);
+	avcodec_free_context(&sw_ctx);
 
 	// 关闭分割上下文
 	av_parser_close(parser);

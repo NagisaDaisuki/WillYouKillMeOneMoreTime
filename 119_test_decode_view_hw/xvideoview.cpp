@@ -30,7 +30,7 @@ XVideoView::~XVideoView()
 {
 	if (cache_) 
 	{
-		delete cache_;
+		delete[] cache_;
 	}
 	cache_ = nullptr;
 }
