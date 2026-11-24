@@ -3,23 +3,10 @@
 #include <thread>
 extern "C" {
 #include <libavformat/avformat.h>
-#include <libavutil/avutil.h>
-#include <libavcodec/avcodec.h>
 }
 
 // 预处理命令导入库
 #pragma comment(lib, "avformat.lib")
-#pragma comment(lib, "avutil.lib")
-#pragma comment(lib, "avcodec.lib")
-
-void PrintErr(int err) 
-{
-	char buf[1024] = {0};
-	av_strerror(err, buf, sizeof(buf) - 1);
-	std::cerr << buf << std::endl;
-}
-#define BERR(err) if (err!=0) {PrintErr(err);return 0;} // 返回0 false
-
 
 AVFormatContext* XDemux::Open(const char* url)
 {
@@ -44,6 +31,16 @@ bool XDemux::Read(AVPacket* pkt)
 	if (!c_)
 		return false;
 	auto re = av_read_frame(c_, pkt);
+	BERR(re);
+	return true;
+}
+
+bool XDemux::Seek(long long pts, int stream_index)
+{
+	std::unique_lock<std::mutex> lock(mux_);
+	if (!c_)
+		return false;
+	auto re = av_seek_frame(c_, stream_index, pts, AVSEEK_FLAG_FRAME | AVSEEK_FLAG_BACKWARD);
 	BERR(re);
 	return true;
 }

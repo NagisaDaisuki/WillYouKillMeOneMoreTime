@@ -12,6 +12,8 @@ struct XRational { // 1:1 复刻
 	int den;	// Denominator
 };
 
+void PrintErr(int err);
+#define BERR(err) if (err!=0) {PrintErr(err);return 0;} // 返回0 false
 
 /// <summary>
 /// 封转和解封转的基类
@@ -38,7 +40,9 @@ public:
 	int video_index() { return video_index_; }
 	XRational video_time_base() { return video_time_base_; }
 	XRational audio_time_base() { return audio_time_base_; }
-
+	
+	// 根据 timebase 换算时间
+	bool RescaleTime(AVPacket* pkt, long long offset_pts, XRational time_base);
 protected:
 	AVFormatContext* c_ = nullptr;	// 封装解封装上下文
 	std::mutex mux_;	// 针对c_上下文资源 互斥访问

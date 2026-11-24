@@ -1,6 +1,8 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
 #include <thread>
 #include "xdemux.h"
+#include "xmux.h"
 extern "C" {
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
@@ -13,18 +15,48 @@ extern "C" {
 #pragma comment(lib, "avcodec.lib")
 
 #define CHKERR(err) if (err!=0) {PrintErr(err);return 0;} // 返回0 false
-const char* filename = "Pensil.mp4";
 
 int main(int argc, char* argv[]) 
 {
-	int ret = 0;
+	// 使用说明
+	char usage[256] = "使用：124_test_xformat 输入文件 输出文件 开始时间（秒） 结束时间（秒）\n";
+	const char* example = "例子：124_text_xformat Pensil.mp4 Pensil_output.mp4\n\n\n";
+	strncat(usage,example,strlen(example));
+	fputs(usage, stdout);
 	
+	if (argc < 3) { // 使用错误
+		return -1;
+	}
+	std::string in_file{argv[1]};
+	std::string out_file{argv[2]}; 
+
+	//////////////////////////////////////////
+	/// 设置截断时间
+	//////////////////////////////////////////
+	int begin_sec{ 0 };		// 截取开始时间
+	int end_sec{ 0 };			// 截取结束时间
+	if (argc > 3) 
+	{
+		begin_sec = atoi(argv[3]);
+	}
+	if (argc > 4)
+	{
+		end_sec = atoi(argv[4]);
+	}
+
+	long long video_begin_pts{};
+	long long audio_begin_pts{};
+	long long video_end_pts{};
+	// long long audio_end_pts{};
+	
+	
+	int ret = 0;
 	//////////////////////////////////////////
 	// 解封装部分
 	//////////////////////////////////////////
 	
 	XDemux demux;
-	auto demux_c = XDemux::Open(filename);
+	auto demux_c = XDemux::Open(in_file.c_str());
 	demux.set_c(demux_c);
 
 	AVStream* as = nullptr;	// 音频流
@@ -44,168 +76,112 @@ int main(int argc, char* argv[])
 			std::cout << "=========视频=========" << std::endl;
 			std::cout << vs->codecpar->width << std::endl;
 			std::cout << vs->codecpar->height << std::endl;
-
 		}
 	}
 
 	//////////////////////////////////////////
 	// 封装部分
 	//////////////////////////////////////////
-	const char* out_filename = "out.mp4";
-	// 编码器上下文
-	AVFormatContext* ec = nullptr;
-	ret = avformat_alloc_output_context2(&ec, NULL, NULL, 
-		out_filename); // 根据文件名推测封装格式
-	CHKERR(ret); // 判断返回值的错误
+	XMux mux;
+	auto mux_c = XMux::Open(out_file.c_str());
+	mux.set_c(mux_c);
 
-	// 添加视频流、音频流
-	auto mvs = avformat_new_stream(ec, NULL); // 视频流
-	auto mas = avformat_new_stream(ec, NULL); // 音频流
-	
-	// 打开输入IO
-	ret = avio_open(&ec->pb, out_filename, AVIO_FLAG_WRITE);
-	CHKERR(ret);
+	auto mvs = mux_c->streams[mux.video_index()];
+	auto mas = mux_c->streams[mux.audio_index()];
 
 	// 设置编码音视频流参数
-	
-	mvs->time_base.num = demux.video_time_base().num;
-	mvs->time_base.den = demux.video_time_base().den;
+	// 判断是否有视频流
+	if (demux.video_index() >= 0)
+	{
+		mvs->time_base = {demux.video_time_base().num, demux.video_time_base().den};
+		// 复制视频参数
+		demux.CopyPara(demux.video_index(), mvs->codecpar);
+	}
 
-	mas->time_base.num = demux.audio_time_base().num;
-	mas->time_base.den = demux.audio_time_base().den;
+	// 判断是否有音频流
+	if (demux.audio_index() >= 0) 
+	{
+		mas->time_base = {demux.audio_time_base().num, demux.audio_time_base().den};
+		// 复制音频参数
+		demux.CopyPara(demux.audio_index(),mas->codecpar);
+	}
 	
-	demux.CopyPara(demux.video_index(), mvs->codecpar);
-	demux.CopyPara(demux.audio_index(),mas->codecpar);
 	// 写入文件头
-	ret = avformat_write_header(ec, NULL);
-	CHKERR(ret);
+	mux.WriteHeader();
 	
-	// 打印输出上下文
-	av_dump_format(ec, 0, out_filename, 1);
+	// 开始截断秒数，算出输入视频的pts
+	if (begin_sec > 0) 
+	{
+		if (demux.video_index() >= 0 && demux.video_time_base().num > 0)
+		{
+			double t = (double)(demux.video_time_base().den / demux.video_time_base().num);
+			video_begin_pts = begin_sec * t;
+			video_end_pts = end_sec * t;
+			demux.Seek(video_begin_pts, demux.video_index()); // 移动到开始帧
+		}
+		if (demux.audio_index() >= 0 && demux.audio_time_base().num > 0)
+		{
+			double t = (double)(demux.audio_time_base().den / demux.audio_time_base().num);
+			audio_begin_pts = begin_sec * t;
+			// audio_end_pts = end_sec * t; // 以视频时间作为基准不需要音频的结尾时间戳
+			// demux.Seek(audio_begin_pts, demux.audio_index()); // 移动到开始帧
+		}
+	}
 	
-	//////////////////////////////////////////
-	// 截取 10 ~ 20秒之间的音视频 
-	// 取多不取少
-	// 假定 9 11 秒有关键帧 取 9秒（约定俗成）
-	//////////////////////////////////////////
-	//double begin_sec = 10.0; // 截取开始时间
-	//double end_sec = 20.0;	// 截取结束时间
-	//long long begin_pts = 0; // 开始显示时间戳
-	//long long end_pts = 0;	// 结束显示时间戳
-	//long long begin_audio_pts = 0; // 音频开始时间戳
-	//long long end_audio_pts = 0;	// 音频结束时间戳
-	//// 换算成 pts 换算成输入 ic 的 pts, 以视频流为准
-	//if (vs && vs->time_base.num > 0) // 分子大于0
-	//{
-	//	// sec / time_base = pts //除以分子乘以分母(所以分子不能为0)
-	//	// pts = sec / (num/den) = sec * (den/num)
-	//	double t = (double)vs->time_base.den 
-	//		/ (double)vs->time_base.num;	// 分母 / 分子
-	//	begin_pts = begin_sec * t;
-	//	end_pts = end_sec * t;
-	//}
-	//if (as && as->time_base.num > 0) 
-	//{
-	//	begin_audio_pts = begin_sec * ((double)as->time_base.den / (double)as->time_base.num);
-	//	end_audio_pts = end_sec * ((double)as->time_base.den / (double)as->time_base.num);
-	//}
-
-	//// seek 输入媒体文件 移动到第10秒的关键帧位置 向后关键帧
-	//if (vs)
-	//	ret = av_seek_frame(demux_c,vs->index,begin_pts, AVSEEK_FLAG_FRAME | AVSEEK_FLAG_BACKWARD);// 默认就是 AVSEEK_FLAG_FRAME 
-	//CHKERR(ret);
-
+	int audio_frame_count = 0;
+	int video_frame_count = 0;
+	double total_sec = 0.0;
 	AVPacket* pkt = av_packet_alloc();
 	for (;;) 
 	{
 		if (!demux.Read(pkt))
 			break;	// 到结尾处
-		//AVStream* in_stream = demux_c->streams[pkt->stream_index];
-		//AVStream* out_stream = nullptr;
-		//long long offset_pts = 0;	// 偏移 pts, 用于 turncate 开头 pts运算
-		//if (vs && pkt->stream_index == vs->index) 
-		//{
-		//	std::cout << "视频流信息: ";
-
-		//	// 超过 第20秒退出，只存 10秒数据（10~20）
-		//	if (pkt->pts > end_pts)
-		//	{
-		//		av_packet_unref(pkt); // 手动清理 pkt
-		//		break;
-		//	}
-		//	out_stream = ec->streams[0];	// 在上面输出上下文
-		//									// 打开时设置好流打开先后顺序了
-		//	offset_pts = begin_pts;
-		//}
-		//else if (as && pkt->stream_index == as->index)
-		//{
-		//	std::cout << "音频流信息: ";
-		//	out_stream = ec->streams[1];
-		//	offset_pts = begin_audio_pts;
-		//}
-
-		//// 重新计算 pts, dts, duration
-		//// 保证兼容性问题
-		//// a * bq(输入time_base) / cq(输出time_base)
-		//if (out_stream)
-		//{
-		//	// 这里当调用 av_seek_frame() 跳转到原视频第 10 秒时，
-		//	// 后续 av_read_frame() 读出来的数据包依然保留着原视
-		//	// 频的绝对时间戳（例如 pts 从 10s 对应的刻度开始，一直到 20s）。
-		//	/*
-		//		如果不减 begin_pts（直接写原时间戳）：
-		//		封装器写入 out.mp4 时，音视频轨道的起始
-		//		时间就是 10s。多数播放器打开该文件时，会认为
-		//		前 0 ~ 10s 是空白时间段——表现为总时长显示为
-		//		20 秒，前 10 秒画面死死定格在第一帧、没有声音，
-		//		直到进度条走到第 10 秒才开始正常播放；部分严格
-		//		校验时间戳的播放器或流媒体协议甚至会直接报错拒播。
-		//		减去 begin_pts 之后：
-		//		把第 10 秒基准点平移为新文件的 0 秒：
-		//		$$\text{新时间戳} = \text{av\_rescale\_q\_rnd}(\text{原时间戳} - \text{begin\_pts},\ \text{in\_time\_base},\ \text{out\_time\_base},\ \dots)$$
-		//		这样 10s ~ 20s 的原始时间戳就会被映射为 0s ~ 10s，
-		//		生成的 out.mp4 总时长为标准的 10 秒，点开即播。
-		//	*/
-		//	pkt->pts = av_rescale_q_rnd(pkt->pts - offset_pts, in_stream->time_base,
-		//		out_stream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-		//	pkt->dts = av_rescale_q_rnd(pkt->dts - offset_pts, in_stream->time_base,
-		//		out_stream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-		//	
-		//	pkt->duration = av_rescale_q(pkt->duration, in_stream->time_base, out_stream->time_base);
-		//	pkt->pos = -1;
-		//}
-
-		// 正常释放 pkt 空间
-		std::cout << pkt->pts << " : " << pkt->dts <<
-			" : " << pkt->size << std::endl;
+		
+		long long offset_pts = 0;
+		// 判断是视频流并且视频流时间 大于结束时间
+		if (video_end_pts > 0 &&
+			pkt->stream_index == demux.video_index() && 
+			pkt->pts > video_end_pts)
+		{
+			av_packet_unref(pkt); // 手动释放 pkt
+			break;
+		}
+		
+		if (pkt->stream_index == demux.video_index())
+		{
+			offset_pts = video_begin_pts;
+			mux.RescaleTime(pkt,offset_pts, demux.video_time_base());
+			video_frame_count++;
+			// 根据 视频播放duration 计算总播放时长
+			if (demux.video_time_base().den > 0)
+				total_sec += pkt->duration * (double)demux.video_time_base().num / (double)demux.video_time_base().den;
+		}
+		else if (pkt->stream_index == demux.audio_index())
+		{
+			offset_pts = audio_begin_pts;
+			mux.RescaleTime(pkt,offset_pts, demux.audio_time_base());
+			audio_frame_count++;
+		}
 		
 		// 写入音视频帧 会清理 pkt
-		ret = av_interleaved_write_frame(ec,pkt); 
-		if (ret != 0)
-		{
-			PrintErr(ret);
-		}
-
-		// av_packet_unref(&pkt);
-		// std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		mux.Write(pkt);
 	}
 	
 	// 写入 尾部trailer
 	// MP4 的 moov 索引头是在写入文件尾时才正式生成并刷入磁盘
-	av_write_trailer(ec);
-	
+	mux.WriteEnd();
+
 	// 释放 pkt
 	av_packet_free(&pkt);
 
 	// 清理全局上下文
 	//avformat_close_input(&demux_c);
+	mux.set_c(nullptr);
 	demux.set_c(nullptr); // 资源清理
-
+	std::cout << "\n输出文件: " << out_file << "\n";
+	std::cout << "视频帧: " << video_frame_count << "\n";
+	std::cout << "音频帧: " << audio_frame_count << "\n";
+	std::cout << "总时长: " << total_sec << "\n";
 	
-	avio_closep(&ec->pb);
-
-	avformat_free_context(ec);
-	ec = nullptr;
-
 	return EXIT_SUCCESS;
 }

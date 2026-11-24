@@ -12,6 +12,12 @@ extern "C" {
 #pragma comment(lib, "avutil.lib")
 #pragma comment(lib, "avcodec.lib")
 
+void PrintErr(int err) 
+{
+	char buf[1024] = {0};
+	av_strerror(err, buf, sizeof(buf) - 1);
+	std::cerr << buf << std::endl;
+}
 
 /// <summary>
 /// 复制参数，线程安全
@@ -25,11 +31,13 @@ bool XFormat::CopyPara(int stream_index, AVCodecParameters* dst)
 	if (!c_) // 上下文没有设定
 		return false;
 	// 索引不正确 
-	if (stream_index < 0 || stream_index > c_->nb_streams)
+	// 必须是 >= c_->nb_streams 等于nb_streams 也会越界
+	if (stream_index < 0 || stream_index >= c_->nb_streams)
 		return false;
 	auto re = avcodec_parameters_copy(dst, c_->streams[stream_index]->codecpar);
 	if (re < 0)
 		return false;
+	return true;
 }
 // 设置上下文
 void XFormat::set_c(AVFormatContext* c) 
@@ -54,8 +62,12 @@ void XFormat::set_c(AVFormatContext* c)
 	}
 	c_ = c; // 直接赋值
 
-	// 如果 是资源释放
+	// 如果是资源释放
 	if (!c_) return;
+	// 用于区分是否有音频或视频流
+	// 在流创建的时候一定要设置流参数类型(AVMEDIA_TYPE_VIDEO/AUDIO)
+	audio_index_ = -1;
+	video_index_ = -1;
 
 	for (int i = 0; i < c->nb_streams; ++i) 
 	{
@@ -72,4 +84,20 @@ void XFormat::set_c(AVFormatContext* c)
 			audio_time_base_ = {c->streams[i]->time_base.num, c->streams[i]->time_base.den};
 		}
 	}
+}
+bool XFormat::RescaleTime(AVPacket* pkt, long long offset_pts, XRational time_base)
+{
+	std::unique_lock<std::mutex> lock(mux_);
+	if (!c_) return false;
+	auto out_stream = c_->streams[pkt->stream_index];
+	AVRational in_time_base;
+	in_time_base.num = time_base.num;
+	in_time_base.den = time_base.den;
+	pkt->pts = av_rescale_q_rnd(pkt->pts - offset_pts, in_time_base,
+		out_stream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+	pkt->dts = av_rescale_q_rnd(pkt->dts - offset_pts, in_time_base,
+		out_stream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+	pkt->duration = av_rescale_q(pkt->duration, in_time_base, out_stream->time_base);
+	pkt->pos = -1;
+	return true;
 }
