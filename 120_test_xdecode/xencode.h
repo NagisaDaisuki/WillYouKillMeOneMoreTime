@@ -24,9 +24,5 @@ public:
 	/// 返回所有编码缓冲中的 AVPacket
 	///////////////////////////////////////////////
 	std::vector<AVPacket*> End();
-
-private: 
-	AVCodecContext* c_ = nullptr;	// 编码器上下文
-	std::mutex mtx_;	
 };
 

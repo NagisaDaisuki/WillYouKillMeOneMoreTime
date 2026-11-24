@@ -21,6 +21,5 @@ public:
 	/// 初始化硬件加速 初始值4 -> AV_HWDEVICE_TYPE_DXVA2
 	///////////////////////////////////////////
 	bool initHW(int type = 4);
-private:
 };
 
